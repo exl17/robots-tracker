@@ -1,0 +1,32 @@
+name: Track robots.txt
+on:
+  schedule:
+    - cron: '*/2 * * * *'
+  workflow_dispatch:
+jobs:
+  track:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: pip install requests
+      - name: Run tracker
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: python tracker.py
+      - name: Save cache
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git stash
+          git pull --rebase
+          git stash pop
+          git add tracked_hashes.json
+          git diff --cached --quiet || (git commit -m "Update cache" && git push)

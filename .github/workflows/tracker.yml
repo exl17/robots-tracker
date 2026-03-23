@@ -10,23 +10,37 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+
       - name: Install dependencies
         run: pip install requests
+
       - name: Run tracker
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: python tracker.py
+
       - name: Save cache
         run: |
           git config user.name "github-actions"
           git config user.email "actions@github.com"
-          git stash
-          git pull --rebase
-          git stash pop
+          
+          # Оновлюємо локальну копію перед додаванням змін
+          git pull --rebase origin main
+          
           git add tracked_hashes.json
-          git diff --cached --quiet || (git commit -m "Update cache" && git push)
+          
+          # Комітимо тільки якщо є зміни, щоб уникнути помилки exit code 1
+          if ! git diff --cached --quiet; then
+            git commit -m "Update cache [skip ci]"
+            git push origin main
+          else
+            echo "No changes to commit"
+          fi
